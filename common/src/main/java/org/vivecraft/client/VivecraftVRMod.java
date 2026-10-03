@@ -98,6 +98,8 @@ public class VivecraftVRMod {
         KeyMapping.Category.INVENTORY);
     public final KeyMapping keyRadialMenu = new KeyMapping("vivecraft.key.radialMenu", -1,
         KeyMapping.Category.MISC);
+    public final KeyMapping keyRadialMenuOffhand = new KeyMapping("vivecraft.key.radialMenuOffhand", -1,
+        KeyMapping.Category.MISC);
     public final KeyMapping keyRotateAxis = new KeyMapping("vivecraft.key.rotateAxis", -1,
         KeyMapping.Category.MOVEMENT);
     public final KeyMapping keyFlickStick = new KeyMapping("vivecraft.key.flickStick", -1,
@@ -183,6 +185,7 @@ public class VivecraftVRMod {
             this.hiddenKeyBindingSet.add(this.keyClimbeyJump);
             this.hiddenKeyBindingSet.add(this.keyMenuButton);
             this.hiddenKeyBindingSet.add(this.keyRadialMenu);
+            this.hiddenKeyBindingSet.add(this.keyRadialMenuOffhand);
             this.hiddenKeyBindingSet.add(this.keyHotbarSwipeX);
             this.hiddenKeyBindingSet.add(this.keyHotbarSwipeY);
             this.hiddenKeyBindingSet.add(this.keyTrackpadTouch);

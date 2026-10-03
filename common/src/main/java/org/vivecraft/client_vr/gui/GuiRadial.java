@@ -42,6 +42,9 @@ public class GuiRadial extends TwoHandedScreen {
     private float gridDeadzone = GRID_SPACING * 0.5F;
     // normal radial buttons that are bound to a hotbar slot, and their slot
     private final Map<GuiEventListener, Integer> hotbarSlotButtons = new HashMap<>();
+    // targets shown last frame, to send a haptic pulse when they change
+    private RadialHotbarButton shownMainTarget;
+    private RadialHotbarButton shownOffhandTarget;
 
     @Override
     public void init() {
@@ -55,12 +58,13 @@ public class GuiRadial extends TwoHandedScreen {
         this.hotbarButtons.clear();
         this.hotbarSlotButtons.clear();
         Arrays.fill(this.hotbarAim, null);
+        this.shownMainTarget = null;
+        this.shownOffhandTarget = null;
 
-        // primary set as a hotbar icon grid, the alt set stays a normal radial
+        // primary set as a hotbar icon grid, the alt set stays a normal radial, the offhand radial is always a grid
         // spectators use the hotbar for the spectator menu, so they get the normal radial
-        if (this.dh.vrSettings.radialHotbarGrid && !this.isShift && this.minecraft.player != null &&
-            !this.minecraft.player.isSpectator())
-        {
+        boolean grid = RadialHandler.isOffhandRadial() || (this.dh.vrSettings.radialHotbarGrid && !this.isShift);
+        if (grid && this.minecraft.player != null && !this.minecraft.player.isSpectator()) {
             this.initHotbarGrid(centerX, centerY);
             return;
         }
@@ -114,16 +118,30 @@ public class GuiRadial extends TwoHandedScreen {
     }
 
     /**
-     * lays out the 9 hotbar slots as a 3x3 grid, slot 1 top left, slot 5 in the center
+     * lays out the 9 hotbar slots as a 3x3 grid, the held slot in the center,
+     * the other 8 slots around it in hotbar order, starting top left
      */
     private void initHotbarGrid(int centerX, int centerY) {
         float scale = this.dh.vrSettings.radialHotbarGridScale;
         int size = Math.round(GRID_BUTTON_SIZE * scale);
         int spacing = Math.round(GRID_SPACING * scale);
         this.gridDeadzone = spacing * 0.5F;
-        for (int slot = 0; slot < 9; slot++) {
-            int col = slot % 3 - 1;
-            int row = slot / 3 - 1;
+
+        int held = this.minecraft.player.getInventory().getSelectedSlot();
+        int nextSlot = 0;
+        // buttons are added in grid position order, the direction lookup relies on that
+        for (int position = 0; position < 9; position++) {
+            int slot;
+            if (position == 4) {
+                slot = held;
+            } else {
+                if (nextSlot == held) {
+                    nextSlot++;
+                }
+                slot = nextSlot++;
+            }
+            int col = position % 3 - 1;
+            int row = position / 3 - 1;
             int selectSlot = slot;
             RadialHotbarButton button = new RadialHotbarButton(slot,
                 centerX + col * spacing - size / 2,
@@ -193,7 +211,24 @@ public class GuiRadial extends TwoHandedScreen {
         RadialHotbarButton button = this.updateHotbarAim(controller);
         if (button != null && this.minecraft.player != null) {
             this.minecraft.player.getInventory().setSelectedSlot(button.getSlot());
+            // the held item moved, rebuild the grid in case the radial stays open
+            this.reinit = true;
         }
+    }
+
+    /**
+     * called when the offhand radial button is released, moves the hovered item to the offhand.
+     * the center cancels, so releasing without aiming doesn't change anything
+     */
+    public void releaseOffhandRadial() {
+        RadialHotbarButton button = this.updateHotbarAim(ControllerType.LEFT);
+        if (button != null && !this.isCenter(button)) {
+            this.swapHotbarSlotToOffhand(button.getSlot());
+        }
+    }
+
+    private boolean isCenter(RadialHotbarButton button) {
+        return this.hotbarButtons.size() == 9 && this.hotbarButtons.get(4) == button;
     }
 
     /**
@@ -277,29 +312,39 @@ public class GuiRadial extends TwoHandedScreen {
         this.extractBackground(graphics, mouseX, mouseY, partialTick);
 
         if (this.isHotbarGrid()) {
-            // main hand highlight follows the controller that opened the radial,
-            // offhand highlight follows the offhand controller while it points at the radial
-            ControllerType active = RadialHandler.getActiveController();
-            if (active == null) {
-                active = ControllerType.RIGHT;
+            RadialHotbarButton mainTarget;
+            RadialHotbarButton offhandTarget;
+            if (RadialHandler.isOffhandRadial()) {
+                // offhand radial: only the offhand aims, the center cancels
+                mainTarget = null;
+                offhandTarget = this.updateHotbarAim(ControllerType.LEFT);
+                if (offhandTarget != null && this.isCenter(offhandTarget)) {
+                    offhandTarget = null;
+                }
+            } else {
+                // main hand highlight follows the controller that opened the radial,
+                // offhand highlight follows the offhand controller while it points at the radial
+                ControllerType active = RadialHandler.getActiveController();
+                mainTarget = this.updateHotbarAim(active != null ? active : ControllerType.RIGHT);
+                offhandTarget = RadialHandler.isUsingController(ControllerType.LEFT) ?
+                    this.updateHotbarAim(ControllerType.LEFT) : null;
             }
-            RadialHotbarButton lastMain = this.hotbarAim[active.ordinal()];
-            RadialHotbarButton lastOffhand = this.hotbarAim[ControllerType.LEFT.ordinal()];
-
-            RadialHotbarButton mainTarget = this.updateHotbarAim(active);
-            RadialHotbarButton offhandTarget = RadialHandler.isUsingController(ControllerType.LEFT) ?
-                this.updateHotbarAim(ControllerType.LEFT) : null;
 
             for (RadialHotbarButton button : this.hotbarButtons) {
                 button.selected = button == mainTarget;
                 button.offhandSelected = button == offhandTarget;
             }
 
-            if (mainTarget != lastMain) {
-                MCVR.get().triggerHapticPulse(active, 300);
+            if (mainTarget != this.shownMainTarget) {
+                this.shownMainTarget = mainTarget;
+                ControllerType active = RadialHandler.getActiveController();
+                MCVR.get().triggerHapticPulse(active != null ? active : ControllerType.RIGHT, 300);
             }
-            if (active != ControllerType.LEFT && offhandTarget != null && offhandTarget != lastOffhand) {
-                MCVR.get().triggerHapticPulse(ControllerType.LEFT, 300);
+            if (offhandTarget != this.shownOffhandTarget) {
+                this.shownOffhandTarget = offhandTarget;
+                if (offhandTarget != null) {
+                    MCVR.get().triggerHapticPulse(ControllerType.LEFT, 300);
+                }
             }
         }
 

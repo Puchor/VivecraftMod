@@ -29,6 +29,8 @@ public class RadialHandler {
     private static boolean POINTED_R;
 
     private static ControllerType ACTIVE_CONTROLLER;
+    // if the open radial is the offhand radial
+    private static boolean OFFHAND_RADIAL = false;
     private static boolean LAST_PRESSED_CLICK_L;
     private static boolean LAST_PRESSED_CLICK_R;
     private static boolean LAST_PRESSED_SHIFT_L;
@@ -46,6 +48,7 @@ public class RadialHandler {
             }
 
             if (showingState) {
+                OFFHAND_RADIAL = false;
                 UI.init(GuiHandler.SCALED_WIDTH_MAX, GuiHandler.SCALED_HEIGHT_MAX);
                 SHOWING = true;
                 ACTIVE_CONTROLLER = controller != null ? controller : ControllerType.RIGHT;
@@ -54,10 +57,36 @@ public class RadialHandler {
             } else {
                 SHOWING = false;
                 ACTIVE_CONTROLLER = null;
+                OFFHAND_RADIAL = false;
             }
 
             return isShowing();
         }
+    }
+
+    /**
+     * opens the offhand radial at the offhand controller. it always shows the hotbar grid,
+     * and moves the aimed item to the offhand when the button is released
+     *
+     * @return if the radial is showing
+     */
+    public static boolean setOffhandOverlayShowing() {
+        if (DH.kiosk || DH.vrSettings.seated) return false;
+
+        OFFHAND_RADIAL = true;
+        UI.init(GuiHandler.SCALED_WIDTH_MAX, GuiHandler.SCALED_HEIGHT_MAX);
+        SHOWING = true;
+        ACTIVE_CONTROLLER = ControllerType.LEFT;
+        orientOverlay(ACTIVE_CONTROLLER);
+        LAST_SHOW_TIME = System.currentTimeMillis();
+        return isShowing();
+    }
+
+    /**
+     * @return if the open radial is the offhand radial
+     */
+    public static boolean isOffhandRadial() {
+        return OFFHAND_RADIAL;
     }
 
     public static void processGui() {
@@ -77,21 +106,21 @@ public class RadialHandler {
         if (!isShowing()) return;
 
         VRData.VRDevicePose roomPose = DH.vrPlayer.vrdata_room_pre.hmd; // normal menu.
-        float distance = 2.0F;
+        float distance = 1.0F;
         int id = 0;
 
         if (controller == ControllerType.LEFT) {
             id = 1;
         }
 
-        if (DH.vrSettings.radialModeHold) {
+        if (DH.vrSettings.radialModeHold || OFFHAND_RADIAL) {
             // open with controller centered, consistent motions.
             roomPose = DH.vrPlayer.vrdata_room_pre.getController(id);
-            distance = 1.2F;
+            distance = DH.vrSettings.radialHoldDistance;
         }
 
         Vector3f position = roomPose.getPositionF();
-        Vector3f offset = roomPose.getDirection().mul(distance * 0.5F);
+        Vector3f offset = roomPose.getDirection().mul(distance);
 
         POS_ROOM = position.add(offset);
 
@@ -104,6 +133,15 @@ public class RadialHandler {
 
     public static void processBindings() {
         if (!isShowing()) return;
+
+        if (OFFHAND_RADIAL) {
+            // offhand radial: no clicking, releasing the button moves the hovered item to the offhand
+            if (!VivecraftVRMod.INSTANCE.keyRadialMenuOffhand.isDown()) {
+                UI.releaseOffhandRadial();
+                setOverlayShowing(false, null);
+            }
+            return;
+        }
 
         // TODO: this is the cause for issue https://github.com/Vivecraft/VivecraftMod/issues/240
 
@@ -144,8 +182,8 @@ public class RadialHandler {
                 UI.swapHotbarSlotToOffhand(slot);
             }
         }
-		
-		if (UI.isHotbarGrid()) {
+
+        if (UI.isHotbarGrid()) {
             // hotbar grid: picks by direction, so the cursors don't need to be exactly on a button
             // offhand click moves the aimed item to the offhand, main hand click selects it
             if (POINTED_L && GuiHandler.KEY_KEYBOARD_CLICK.consumeClick(ControllerType.LEFT)) {

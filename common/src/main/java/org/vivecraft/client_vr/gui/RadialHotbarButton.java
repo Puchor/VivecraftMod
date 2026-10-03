@@ -58,7 +58,8 @@ public class RadialHotbarButton extends Button {
     protected void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         Minecraft mc = Minecraft.getInstance();
 
-        graphics.blitSprite(RenderPipelines.GUI_TEXTURED, SPRITES.get(this.active, this.selected),
+        graphics.blitSprite(RenderPipelines.GUI_TEXTURED,
+            SPRITES.get(this.active, this.selected || this.offhandSelected),
             this.getX(), this.getY(), this.getWidth(), this.getHeight());
 
         if (mc.player != null) {
@@ -90,8 +91,5 @@ public class RadialHotbarButton extends Button {
             graphics.outline(this.getX() + 4, this.getY() + 4, this.getWidth() - 8, this.getHeight() - 8,
                 0xFF55FFFF);
         }
-
-        // slot number in the corner
-        graphics.text(mc.font, String.valueOf(this.slot + 1), this.getX() + 3, this.getY() + 3, 0xFFAAAAAA);
     }
 }
