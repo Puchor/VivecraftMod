@@ -20,6 +20,7 @@ import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.state.level.LevelRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.client.AttackIndicatorStatus;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.model.ModelBakery;
 import net.minecraft.core.BlockPos;
@@ -30,6 +31,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.util.profiling.Profiler;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
@@ -1257,6 +1259,22 @@ public class VREffectsHelper {
 
         crosshairRenderState.occlude = DATA_HOLDER.vrSettings.useCrosshairOcclusion;
 
+        // attack cooldown indicator, same logic as the vanilla crosshair indicator
+        crosshairRenderState.attackIndicator = CrosshairRenderState.AttackIndicator.NONE;
+        if (MC.options.attackIndicator().get() == AttackIndicatorStatus.CROSSHAIR) {
+            float attackStrength = player.getAttackStrengthScale(0.0F);
+            boolean full = false;
+            if (MC.crosshairPickEntity instanceof LivingEntity && attackStrength >= 1.0F) {
+                full = player.getCurrentItemAttackStrengthDelay() > 5.0F && MC.crosshairPickEntity.isAlive();
+            }
+            if (full) {
+                crosshairRenderState.attackIndicator = CrosshairRenderState.AttackIndicator.FULL;
+            } else if (attackStrength < 1.0F) {
+                crosshairRenderState.attackIndicator = CrosshairRenderState.AttackIndicator.PROGRESS;
+                crosshairRenderState.attackProgress = attackStrength;
+            }
+        }
+
         Profiler.get().pop();
     }
 
@@ -1319,8 +1337,94 @@ public class VREffectsHelper {
                     .setNormal(0.0F, 0.0F, 1.0F);
             });
 
+        if (crosshairState.attackIndicator != CrosshairRenderState.AttackIndicator.NONE) {
+            submitAttackIndicator(output, crosshairState, poseStack, order);
+        }
+
         poseStack.popPose();
         Profiler.get().pop();
         return order;
+    }
+
+    // vanilla attack indicator sprites
+    private static final Identifier ATTACK_INDICATOR_FULL = Identifier.withDefaultNamespace(
+        "hud/crosshair_attack_indicator_full");
+    private static final Identifier ATTACK_INDICATOR_BACKGROUND = Identifier.withDefaultNamespace(
+        "hud/crosshair_attack_indicator_background");
+    private static final Identifier ATTACK_INDICATOR_PROGRESS = Identifier.withDefaultNamespace(
+        "hud/crosshair_attack_indicator_progress");
+
+    /**
+     * submits the attack cooldown indicator below the crosshair, laid out like the vanilla one.
+     * expects the poseStack to be set up for the crosshair, where the 15 pixel crosshair spans -1 to 1
+     */
+    private static void submitAttackIndicator(
+        SubmitNodeCollector output, CrosshairRenderState crosshairState, PoseStack poseStack, int order)
+    {
+        if (crosshairState.attackIndicator == CrosshairRenderState.AttackIndicator.FULL) {
+            // 16x16, top edge 9 pixels below the crosshair center
+            submitCrosshairSprite(output, crosshairState, poseStack, order, ATTACK_INDICATOR_FULL,
+                -8, 8, 9, 25, 1.0F);
+        } else {
+            // 16x4 bar, filled from left to right
+            submitCrosshairSprite(output, crosshairState, poseStack, order, ATTACK_INDICATOR_BACKGROUND,
+                -8, 8, 9, 13, 1.0F);
+            int filled = Math.min(16, (int) (crosshairState.attackProgress * 17.0F));
+            if (filled > 0) {
+                submitCrosshairSprite(output, crosshairState, poseStack, order, ATTACK_INDICATOR_PROGRESS,
+                    -8, -8 + filled, 9, 13, filled / 16.0F);
+            }
+        }
+    }
+
+    /**
+     * submits a gui sprite in crosshair space. positions are in gui pixels relative to the crosshair center,
+     * x to the right, y down, like on a flat screen
+     *
+     * @param uWidth fraction of the sprite width to use, starting at the left edge
+     */
+    private static void submitCrosshairSprite(
+        SubmitNodeCollector output, CrosshairRenderState crosshairState, PoseStack poseStack, int order,
+        Identifier spriteId, float left, float right, float top, float bottom, float uWidth)
+    {
+        TextureAtlasSprite sprite = MC.getAtlasManager().getAtlasOrThrow(AtlasIds.GUI).getSprite(spriteId);
+        // the crosshair quad is 2 units wide for 15 pixels, and mirrored on x like the crosshair
+        float pixel = 2.0F / 15.0F;
+        float x0 = -left * pixel;
+        float x1 = -right * pixel;
+        float y0 = -top * pixel;
+        float y1 = -bottom * pixel;
+        float u0 = sprite.getU0();
+        float u1 = sprite.getU0() + (sprite.getU1() - sprite.getU0()) * uWidth;
+        float v0 = sprite.getV0();
+        float v1 = sprite.getV1();
+        float brightness = crosshairState.brightness;
+        int light = crosshairState.light;
+
+        output.order(order).submitCustomGeometry(poseStack,
+            VRRenderTypes.crosshairWorld(sprite.atlasLocation(), !crosshairState.occlude),
+            (pose, consumer) -> {
+                // same winding as the crosshair quad
+                consumer.addVertex(pose, x1, y0, 0.0F)
+                    .setColor(brightness, brightness, brightness, 1.0F)
+                    .setUv(u1, v0)
+                    .setOverlay(OverlayTexture.NO_OVERLAY).setLight(light)
+                    .setNormal(0.0F, 0.0F, 1.0F);
+                consumer.addVertex(pose, x0, y0, 0.0F)
+                    .setColor(brightness, brightness, brightness, 1.0F)
+                    .setUv(u0, v0)
+                    .setOverlay(OverlayTexture.NO_OVERLAY).setLight(light)
+                    .setNormal(0.0F, 0.0F, 1.0F);
+                consumer.addVertex(pose, x0, y1, 0.0F)
+                    .setColor(brightness, brightness, brightness, 1.0F)
+                    .setUv(u0, v1)
+                    .setOverlay(OverlayTexture.NO_OVERLAY).setLight(light)
+                    .setNormal(0.0F, 0.0F, 1.0F);
+                consumer.addVertex(pose, x1, y1, 0.0F)
+                    .setColor(brightness, brightness, brightness, 1.0F)
+                    .setUv(u1, v1)
+                    .setOverlay(OverlayTexture.NO_OVERLAY).setLight(light)
+                    .setNormal(0.0F, 0.0F, 1.0F);
+            });
     }
 }

@@ -13,4 +13,16 @@ public class CrosshairRenderState {
     public float scale;
     public float brightness;
     public int light;
+
+    // attack cooldown indicator, shown below the crosshair
+    public AttackIndicator attackIndicator = AttackIndicator.NONE;
+    public float attackProgress;
+
+    public enum AttackIndicator {
+        NONE,
+        // attack is charged and the target can be hit with full strength
+        FULL,
+        // attack is still charging, uses attackProgress
+        PROGRESS
+    }
 }
