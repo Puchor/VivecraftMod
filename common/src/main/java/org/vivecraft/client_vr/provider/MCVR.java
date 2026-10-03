@@ -989,9 +989,16 @@ public abstract class MCVR {
         }
 
         // radial menu
-        if (MOD.keyRadialMenu.consumeClick() && !gui) {
+        if (MOD.keyRadialMenu.consumeClick() && !gui && !RadialHandler.isOffhandRadial()) {
             RadialHandler.setOverlayShowing(!RadialHandler.isShowing(),
                 this.findActiveBindingControllerType(MOD.keyRadialMenu));
+        }
+
+        // offhand radial menu, only one radial can be open at a time
+        if (MOD.keyRadialMenuOffhand.consumeClick() && !gui && !RadialHandler.isShowing() &&
+            this.mc.player != null && !this.mc.player.isSpectator())
+        {
+            RadialHandler.setOffhandOverlayShowing();
         }
 
         // close radial with ESC when not hold mode
@@ -1210,6 +1217,7 @@ public abstract class MCVR {
         this.addActionParams(map, MOD.keyRotateAxis, "optional", "vector2", null);
         this.addActionParams(map, MOD.keyFlickStick, "optional", "vector2", null);
         this.addActionParams(map, MOD.keyRadialMenu, "suggested", "boolean", null);
+        this.addActionParams(map, MOD.keyRadialMenuOffhand, "optional", "boolean", null);
         this.addActionParams(map, MOD.keySwapMirrorView, "optional", "boolean", VRInputActionSet.GLOBAL);
         this.addActionParams(map, MOD.keyToggleKeyboard, "optional", "boolean", VRInputActionSet.GLOBAL);
         this.addActionParams(map, MOD.keyMoveThirdPersonCam, "optional", "boolean", VRInputActionSet.GLOBAL);
