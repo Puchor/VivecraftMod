@@ -10,7 +10,8 @@ public class GuiRadialSettings extends GuiVROptionsBase {
         new VROptionEntry(VRSettings.VrOptions.RADIAL_MODE_HOLD),
         new VROptionEntry(VRSettings.VrOptions.RADIAL_REPEAT),
         new VROptionEntry(VRSettings.VrOptions.RADIAL_SHOW_ITEMS),
-		new VROptionEntry(VRSettings.VrOptions.RADIAL_HOTBAR_GRID)
+		new VROptionEntry(VRSettings.VrOptions.RADIAL_HOTBAR_GRID),
+		new VROptionEntry(VRSettings.VrOptions.RADIAL_HOTBAR_GRID_SCALE)
     };
 
     public GuiRadialSettings(Screen lastScreen) {

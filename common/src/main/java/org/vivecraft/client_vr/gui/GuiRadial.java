@@ -3,6 +3,7 @@ package org.vivecraft.client_vr.gui;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.core.BlockPos;
@@ -23,20 +24,24 @@ import org.vivecraft.client_vr.provider.openvr_lwjgl.VRInputAction;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class GuiRadial extends TwoHandedScreen {
-    // size and spacing of the hotbar grid buttons
+    // size and spacing of the hotbar grid buttons, at a grid size of 1
     private static final int GRID_BUTTON_SIZE = 40;
     private static final int GRID_SPACING = 46;
-    // aiming closer than this to the center selects the center slot
-    private static final int GRID_DEADZONE = GRID_SPACING / 2;
 
     private boolean isShift = false;
     String[] arr;
     private final List<RadialHotbarButton> hotbarButtons = new ArrayList<>();
     // last valid aimed grid button per controller, indexed by ControllerType ordinal
     private final RadialHotbarButton[] hotbarAim = new RadialHotbarButton[ControllerType.values().length];
+    // aiming closer than this to the center selects the center slot, set from the grid size
+    private float gridDeadzone = GRID_SPACING * 0.5F;
+    // normal radial buttons that are bound to a hotbar slot, and their slot
+    private final Map<GuiEventListener, Integer> hotbarSlotButtons = new HashMap<>();
 
     @Override
     public void init() {
@@ -48,6 +53,7 @@ public class GuiRadial extends TwoHandedScreen {
         int centerY = this.height / 2;
 
         this.hotbarButtons.clear();
+        this.hotbarSlotButtons.clear();
         Arrays.fill(this.hotbarAim, null);
 
         // primary set as a hotbar icon grid, the alt set stays a normal radial
@@ -75,28 +81,20 @@ public class GuiRadial extends TwoHandedScreen {
                 .ifPresent(keymapping -> {
                     VRInputAction vrinputaction = MCVR.get().getInputAction(this.arr[index]);
                     String label = I18n.get(keymapping.getName());
+                    int hotbarSlot = getHotbarSlot(keymapping.getName());
                     // show the item in hotbar slot keybinds instead of "Hotbar Slot N"
-                    String name = keymapping.getName();
-                    if (this.dh.vrSettings.radialShowItems && name.startsWith("key.hotbar.") &&
-                        this.minecraft.player != null)
-                    {
-                        try {
-                            int slot = Integer.parseInt(name.substring("key.hotbar.".length())) - 1;
-                            if (slot < 0 || slot > 8) throw new NumberFormatException();
-                            ItemStack stack = this.minecraft.player.getInventory().getItem(slot);
-                            label = (slot + 1) + ": " + (stack.isEmpty() ? I18n.get("vivecraft.gui.radial.empty") :
-                                stack.getHoverName().getString() +
-                                    (stack.getCount() > 1 ? " x" + stack.getCount() : ""));
-                        } catch (NumberFormatException ignored) {
-                            // not a numbered hotbar key, keep the default label
-                        }
+                    if (this.dh.vrSettings.radialShowItems && hotbarSlot >= 0 && this.minecraft.player != null) {
+                        ItemStack stack = this.minecraft.player.getInventory().getItem(hotbarSlot);
+                        label = (hotbarSlot + 1) + ": " + (stack.isEmpty() ? I18n.get("vivecraft.gui.radial.empty") :
+                            stack.getHoverName().getString() +
+                                (stack.getCount() > 1 ? " x" + stack.getCount() : ""));
                     }
                     if (vrinputaction != null &&
                         (vrinputaction.keyBinding.isDown() || MethodHolder.isKeyDown(vrinputaction.keyBinding.key)))
                     {
                         label = "§a" + label;
                     }
-                    this.addRenderableWidget(createButton(label, (p) -> {
+                    Button button = createButton(label, (p) -> {
                         if (vrinputaction != null) {
                             if (vrinputaction.keyBinding.isDown() ||
                                 MethodHolder.isKeyDown(vrinputaction.keyBinding.key))
@@ -106,7 +104,11 @@ public class GuiRadial extends TwoHandedScreen {
                                 vrinputaction.holdBinding();
                             }
                         }
-                    }, index, centerX, centerY));
+                    }, index, centerX, centerY);
+                    this.addRenderableWidget(button);
+                    if (hotbarSlot >= 0) {
+                        this.hotbarSlotButtons.put(button, hotbarSlot);
+                    }
                 });
         }
     }
@@ -115,14 +117,18 @@ public class GuiRadial extends TwoHandedScreen {
      * lays out the 9 hotbar slots as a 3x3 grid, slot 1 top left, slot 5 in the center
      */
     private void initHotbarGrid(int centerX, int centerY) {
+        float scale = this.dh.vrSettings.radialHotbarGridScale;
+        int size = Math.round(GRID_BUTTON_SIZE * scale);
+        int spacing = Math.round(GRID_SPACING * scale);
+        this.gridDeadzone = spacing * 0.5F;
         for (int slot = 0; slot < 9; slot++) {
             int col = slot % 3 - 1;
             int row = slot / 3 - 1;
             int selectSlot = slot;
             RadialHotbarButton button = new RadialHotbarButton(slot,
-                centerX + col * GRID_SPACING - GRID_BUTTON_SIZE / 2,
-                centerY + row * GRID_SPACING - GRID_BUTTON_SIZE / 2,
-                GRID_BUTTON_SIZE, (p) -> this.selectHotbarSlot(selectSlot));
+                centerX + col * spacing - size / 2,
+                centerY + row * spacing - size / 2,
+                size, (p) -> this.selectHotbarSlot(selectSlot));
             this.hotbarButtons.add(button);
             this.addRenderableWidget(button);
         }
@@ -150,7 +156,7 @@ public class GuiRadial extends TwoHandedScreen {
         double dy = y - this.height * 0.5;
         int col = 0;
         int row = 0;
-        if (dx * dx + dy * dy > GRID_DEADZONE * GRID_DEADZONE) {
+        if (dx * dx + dy * dy > this.gridDeadzone * this.gridDeadzone) {
             // snap the angle to one of 8 directions, screen y points down
             int sector = (int) Math.round(Math.atan2(dy, dx) / (Math.PI * 0.25));
             col = (int) Math.round(Math.cos(sector * Math.PI * 0.25));
@@ -198,14 +204,34 @@ public class GuiRadial extends TwoHandedScreen {
      */
     public void swapAimedHotbarSlotToOffhand(ControllerType controller) {
         RadialHotbarButton button = this.updateHotbarAim(controller);
+        if (button != null) {
+            this.swapHotbarSlotToOffhand(button.getSlot());
+        }
+    }
+
+    /**
+     * @param x screen x coordinate
+     * @param y screen y coordinate
+     * @return hotbar slot of the normal radial button at that position, or -1 if there is none
+     */
+    public int getHotbarSlotAt(double x, double y) {
+        return this.getChildAt(x, y).map(widget -> this.hotbarSlotButtons.getOrDefault(widget, -1)).orElse(-1);
+    }
+
+    /**
+     * moves the item of the given hotbar slot into the offhand, the previous offhand item goes into that slot.
+     * the held main hand slot doesn't change
+     *
+     * @param slot hotbar slot, 0-8
+     */
+    public void swapHotbarSlotToOffhand(int slot) {
         LocalPlayer player = this.minecraft.player;
-        if (button == null || player == null || player.isSpectator()) return;
+        if (player == null || player.isSpectator() || slot < 0 || slot > 8) return;
 
         // the server swaps the held slot with the offhand, so briefly hold the aimed slot,
         // same packets as pressing the hotbar key and then the swap offhand key
         Inventory inventory = player.getInventory();
         int previous = inventory.getSelectedSlot();
-        int slot = button.getSlot();
         if (slot != previous) {
             inventory.setSelectedSlot(slot);
             player.connection.send(new ServerboundSetCarriedItemPacket(slot));
@@ -216,6 +242,20 @@ public class GuiRadial extends TwoHandedScreen {
         if (slot != previous) {
             inventory.setSelectedSlot(previous);
             player.connection.send(new ServerboundSetCarriedItemPacket(previous));
+        }
+    }
+
+    /**
+     * @param keyName KeyMapping name
+     * @return hotbar slot 0-8 of a hotbar slot KeyMapping, or -1 if it isn't one
+     */
+    private static int getHotbarSlot(String keyName) {
+        if (!keyName.startsWith("key.hotbar.")) return -1;
+        try {
+            int slot = Integer.parseInt(keyName.substring("key.hotbar.".length())) - 1;
+            return slot >= 0 && slot <= 8 ? slot : -1;
+        } catch (NumberFormatException ignored) {
+            return -1;
         }
     }
 
