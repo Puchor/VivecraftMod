@@ -21,10 +21,9 @@ public class RadialHotbarButton extends Button {
         Identifier.withDefaultNamespace("widget/button_disabled"),
         Identifier.withDefaultNamespace("widget/button_highlighted"));
 
-    // item icons are 16x16, scale them up to fill the button
-    private static final float ITEM_SCALE = 2.0F;
-
     private final int slot;
+    // item icons are 16x16, scaled to fill the button
+    private final float itemScale;
 
     /**
      * if this button is the one currently aimed at
@@ -39,6 +38,7 @@ public class RadialHotbarButton extends Button {
     public RadialHotbarButton(int slot, int x, int y, int size, OnPress onPress) {
         super(x, y, size, size, Component.empty(), onPress, Button.DEFAULT_NARRATION);
         this.slot = slot;
+        this.itemScale = size / 20.0F;
     }
 
     public int getSlot() {
@@ -74,16 +74,20 @@ public class RadialHotbarButton extends Button {
                 graphics.pose().pushMatrix();
                 graphics.pose().translate(this.getX() + this.getWidth() * 0.5F,
                     this.getY() + this.getHeight() * 0.5F);
-                graphics.pose().scale(ITEM_SCALE, ITEM_SCALE);
+                graphics.pose().scale(this.itemScale, this.itemScale);
                 graphics.fakeItem(stack, -8, -8);
                 graphics.itemDecorations(mc.font, stack, -8, -8);
                 graphics.pose().popMatrix();
             }
         }
 
-        // mark the slot the offhand is aiming at, inset so it doesn't cover the held slot marker
-        if (this.offhandSelected) {
+        // mark the aimed slots, inset so they don't cover the held slot marker or each other
+        if (this.selected) {
             graphics.outline(this.getX() + 2, this.getY() + 2, this.getWidth() - 4, this.getHeight() - 4,
+                0xFFFFFFFF);
+        }
+        if (this.offhandSelected) {
+            graphics.outline(this.getX() + 4, this.getY() + 4, this.getWidth() - 8, this.getHeight() - 8,
                 0xFF55FFFF);
         }
 

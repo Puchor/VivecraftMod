@@ -638,6 +638,8 @@ public class VRSettings {
     public boolean radialShowItems = true;
 	@SettingField(VrOptions.RADIAL_HOTBAR_GRID)
     public boolean radialHotbarGrid = false;
+	@SettingField(VrOptions.RADIAL_HOTBAR_GRID_SCALE)
+    public float radialHotbarGridScale = 1.0F;
     @SettingField(VrOptions.RADIAL_NUMBER)
     public int vrRadialButtons = 8;
     @SettingField(VrOptions.PHYSICAL_KEYBOARD)
@@ -1736,6 +1738,7 @@ public class VRSettings {
         RADIAL_REPEAT(OptionType.BOOLEAN), // repeat last radial action
 		RADIAL_SHOW_ITEMS(OptionType.BOOLEAN), // show item names on hotbar slot buttons
         RADIAL_HOTBAR_GRID(OptionType.BOOLEAN), // show the hotbar as an icon grid in the radial
+		RADIAL_HOTBAR_GRID_SCALE(0.5F, 1.5F, 0.05F, 2), // size of the radial hotbar grid
 		RADIAL_NUMBER(4, 14, 2, 0), // number of radial buttons
         PHYSICAL_KEYBOARD("vivecraft.options.keyboard.physical",
             "vivecraft.options.keyboard.pointer") { // Keyboard Type

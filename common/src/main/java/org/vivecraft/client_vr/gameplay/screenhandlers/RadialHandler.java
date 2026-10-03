@@ -136,7 +136,16 @@ public class RadialHandler {
         int x2 = (int) (Math.min(Math.max((int) UI.cursorX2, 0), GuiHandler.GUI_WIDTH) * uiScaleX);
         int y2 = (int) (Math.min(Math.max((int) UI.cursorY2, 0), GuiHandler.GUI_HEIGHT) * uiScaleY);
 
-        if (UI.isHotbarGrid()) {
+        if (!UI.isHotbarGrid() && POINTED_L && GuiHandler.KEY_KEYBOARD_CLICK.presses(ControllerType.LEFT) > 0) {
+            // normal radial: offhand click on a hotbar slot button moves that item to the offhand
+            int slot = UI.getHotbarSlotAt(x1, y1);
+            if (slot >= 0) {
+                GuiHandler.KEY_KEYBOARD_CLICK.consumeClick(ControllerType.LEFT);
+                UI.swapHotbarSlotToOffhand(slot);
+            }
+        }
+		
+		if (UI.isHotbarGrid()) {
             // hotbar grid: picks by direction, so the cursors don't need to be exactly on a button
             // offhand click moves the aimed item to the offhand, main hand click selects it
             if (POINTED_L && GuiHandler.KEY_KEYBOARD_CLICK.consumeClick(ControllerType.LEFT)) {
