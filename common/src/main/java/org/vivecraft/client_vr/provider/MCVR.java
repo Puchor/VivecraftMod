@@ -201,6 +201,13 @@ public abstract class MCVR {
         ME = null;
     }
 
+
+	/**
+     * @return if free move should work with the current screen open
+     */
+    public boolean isMovementAllowedInScreen() {
+        return this.dh.vrSettings.moveInInventories && this.mc.gui.screen() instanceof AbstractContainerScreen;
+    }
     /**
      * triggers a haptic pulse on the give controller, as soon as possible
      *
@@ -1057,7 +1064,9 @@ public abstract class MCVR {
             boolean climbing = !this.mc.player.isInWater() && this.dh.climbTracker.isClimbeyClimb() &&
                 this.dh.climbTracker.isGrabbingLadder();
             float forward = 0F;
-            if (!this.dh.vrSettings.seated && this.mc.gui.screen() == null && !KeyboardHandler.SHOWING && !climbing) {
+			if (!this.dh.vrSettings.seated && (this.mc.gui.screen() == null || this.isMovementAllowedInScreen()) &&
+                !KeyboardHandler.SHOWING && !climbing)
+            {
                 // override everything
                 Vector2fc moveStrafe = this.getInputAction(VivecraftVRMod.INSTANCE.keyFreeMoveStrafe)
                     .getAxis2DUseTracked();

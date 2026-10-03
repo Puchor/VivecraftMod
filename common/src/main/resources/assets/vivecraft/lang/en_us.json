@@ -596,6 +596,8 @@
   "vivecraft.options.COMMANDS_BUTTON_ICON": "Icon For Commands Button",
   "vivecraft.options.MODIFY_PAUSE_MENU": "Modify Pause Menu",
   "vivecraft.options.INGAME_BINDINGS_IN_GUI": "In-Game Bindings In GUI",
+  "vivecraft.options.MOVE_IN_INVENTORIES": "Move In Inventories",
+  "vivecraft.options.MOVE_IN_INVENTORIES.tooltip": "If enabled, you can keep walking with free move while an inventory, chest or other container screen is open.\nOnly movement works, other In-Game bindings stay disabled in menus.",
   "vivecraft.options.MENU_WORLD_FALLBACK": "Fallback Method",
   "vivecraft.options.MIRROR_CROP": "Mirror Cropping",
   "vivecraft.options.MIRROR_SCREENSHOT_CAMERA": "Camera as Desktop Mirror",

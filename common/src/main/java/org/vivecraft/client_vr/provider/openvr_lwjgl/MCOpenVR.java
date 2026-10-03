@@ -786,7 +786,7 @@ public class MCOpenVR extends MCVR {
             activeSets.add(VRInputActionSet.CONTEXTUAL);
         } else {
             activeSets.add(VRInputActionSet.GUI);
-            if (ClientDataHolderVR.getInstance().vrSettings.ingameBindingsInGui) {
+			if (ClientDataHolderVR.getInstance().vrSettings.ingameBindingsInGui || this.isMovementAllowedInScreen()) {
                 activeSets.add(VRInputActionSet.INGAME);
             }
             if (this.mc.gui.screen() instanceof FBTCalibrationScreen) {
@@ -1251,6 +1251,14 @@ public class MCOpenVR extends MCVR {
      * @param action VRInputAction to process
      */
     private void processInputAction(VRInputAction action) {
+		if (action.actionSet == VRInputActionSet.INGAME && this.mc.gui.screen() != null &&
+            !ClientDataHolderVR.getInstance().vrSettings.ingameBindingsInGui && this.isMovementAllowedInScreen() &&
+            !this.isMovementAction(action))
+        {
+            // the INGAME set is only active for movement, keep everything else released
+            unpressAction(action);
+            return;
+        }
         if (action.isActive() && action.isEnabledRaw() &&
             // try to prevent double left clicks
             (!ClientDataHolderVR.getInstance().vrSettings.ingameBindingsInGui ||
@@ -1313,6 +1321,16 @@ public class MCOpenVR extends MCVR {
         action.unpressBinding();
     }
 
+	/**
+     * @param action VRInputAction to check
+     * @return if the action is used for free move walking
+     */
+    private boolean isMovementAction(VRInputAction action) {
+        KeyMapping key = action.keyBinding;
+        return key == this.mc.options.keyUp || key == this.mc.options.keyDown ||
+            key == this.mc.options.keyLeft || key == this.mc.options.keyRight ||
+            key == VivecraftVRMod.INSTANCE.keyFreeMoveStrafe || key == VivecraftVRMod.INSTANCE.keyFreeMoveRotate;
+    }
     /**
      * @param action VRInputAction to check for
      * @return if the given action does not correspond to one of the movement keys, or if the player didn't move
