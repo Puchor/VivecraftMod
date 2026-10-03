@@ -331,6 +331,8 @@ public class VRSettings {
     public RightClickDelay rightclickDelay = RightClickDelay.VANILLA;
     @SettingField(VrOptions.INGAME_BINDINGS_IN_GUI)
     public boolean ingameBindingsInGui = false;
+	@SettingField(VrOptions.MOVE_IN_INVENTORIES)
+    public boolean moveInInventories = false;
     @SettingField(VrOptions.THIRDPERSON_ITEMTRANSFORMS)
     public boolean thirdPersonItems = false;
     @SettingField(VrOptions.THIRDPERSON_ITEMTRANSFORMS_CUSTOM)
@@ -2521,6 +2523,7 @@ public class VRSettings {
             }
         },
         INGAME_BINDINGS_IN_GUI(OptionType.BOOLEAN),
+		MOVE_IN_INVENTORIES(OptionType.BOOLEAN), // allow walking with inventory screens open
         RIGHT_CLICK_DELAY, // Right Click Repeat
         CONTROLLER_TRANSFORM { // forced transform for controllers
 
