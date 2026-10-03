@@ -125,6 +125,8 @@
   "vivecraft.options.RADIAL_MODE_HOLD": "Radial Menu Mode",
   "vivecraft.options.RADIAL_REPEAT": "Repeat On Short Press",
   "vivecraft.options.RADIAL_SHOW_ITEMS": "Show Hotbar Items",
+  "vivecraft.options.RADIAL_HOTBAR_GRID": "Hotbar Grid",
+  "vivecraft.options.RADIAL_HOTBAR_GRID.tooltip": "If enabled, the main radial set shows your 9 hotbar slots as item icons in a 3x3 grid. Point in a direction to pick a slot, or stay in the middle for slot 5.\nThe alternate set (Shift) keeps your normal radial buttons.",
   "vivecraft.gui.radial.empty": "Empty",
   "vivecraft.options.PHYSICAL_KEYBOARD": "Keyboard Type",
   "vivecraft.options.PHYSICAL_KEYBOARD_SCALE": "Keyboard Size",

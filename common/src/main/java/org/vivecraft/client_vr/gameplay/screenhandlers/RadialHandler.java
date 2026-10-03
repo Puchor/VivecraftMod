@@ -136,6 +136,21 @@ public class RadialHandler {
         int x2 = (int) (Math.min(Math.max((int) UI.cursorX2, 0), GuiHandler.GUI_WIDTH) * uiScaleX);
         int y2 = (int) (Math.min(Math.max((int) UI.cursorY2, 0), GuiHandler.GUI_HEIGHT) * uiScaleY);
 
+        if (UI.isHotbarGrid()) {
+            // hotbar grid: picks by direction, so the cursors don't need to be exactly on a button
+            // offhand click moves the aimed item to the offhand, main hand click selects it
+            if (POINTED_L && GuiHandler.KEY_KEYBOARD_CLICK.consumeClick(ControllerType.LEFT)) {
+                UI.swapAimedHotbarSlotToOffhand(ControllerType.LEFT);
+            }
+            if (POINTED_R && GuiHandler.KEY_KEYBOARD_CLICK.consumeClick(ControllerType.RIGHT)) {
+                UI.selectAimedHotbarSlot(ControllerType.RIGHT);
+                if (DH.vrSettings.radialModeHold) {
+                    setOverlayShowing(false, null);
+                    return;
+                }
+            }
+        }
+
         if (DH.vrSettings.radialModeHold) {
             if (ACTIVE_CONTROLLER == null) {
                 return;
@@ -144,6 +159,13 @@ public class RadialHandler {
             if (!VivecraftVRMod.INSTANCE.keyRadialMenu.isDown()) {
                 int activeX = ACTIVE_CONTROLLER == ControllerType.LEFT ? x1 : x2;
                 int activeY = ACTIVE_CONTROLLER == ControllerType.LEFT ? y1 : y2;
+
+                if (UI.isHotbarGrid()) {
+                    // releasing selects the slot in the direction the opening controller last aimed
+                    UI.selectAimedHotbarSlot(ACTIVE_CONTROLLER);
+                    setOverlayShowing(false, null);
+                    return;
+                }
 
                 // if the radial key was just pressed, and the cursor is not over a button, repeate the last action
                 if (DH.vrSettings.radialRepeat && UI.getChildAt(activeX, activeY).isEmpty() && LAST_PRESS != null &&
@@ -156,7 +178,7 @@ public class RadialHandler {
 
                 setOverlayShowing(false, null);
             }
-        } else {
+        } else if (!UI.isHotbarGrid()) {
             if (POINTED_L && GuiHandler.KEY_KEYBOARD_CLICK.consumeClick(ControllerType.LEFT)) {
                 click(x1, y1);
                 LAST_PRESSED_CLICK_L = true;
@@ -186,6 +208,13 @@ public class RadialHandler {
 
     private static void release(int x, int y) {
         UI.mouseReleased(new MouseButtonEvent(x, y, new MouseButtonInfo(GLFW.GLFW_MOUSE_BUTTON_LEFT, 0)));
+    }
+
+    /**
+     * @return the controller that opened the radial, or null if it isn't showing
+     */
+    public static ControllerType getActiveController() {
+        return ACTIVE_CONTROLLER;
     }
 
     public static boolean isShowing() {
