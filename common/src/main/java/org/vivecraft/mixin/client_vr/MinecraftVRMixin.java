@@ -47,6 +47,7 @@ import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
+import org.vivecraft.client_vr.gameplay.OffhandAimHelper;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.At.Shift;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -523,15 +524,35 @@ public abstract class MinecraftVRMixin implements MinecraftExtension {
                 // no telescope use in standing vr
                 return null;
             }
+
+            if (hand == InteractionHand.OFF_HAND && OffhandAimHelper.isActive(this.player)) {
+                // the main hand item had no use, aim the offhand item with the offhand controller.
+                // swap the hit result for the rest of this hand, it gets restored when startUseItem returns
+                this.vivecraft$mainHitResult = this.hitResult;
+                this.vivecraft$offhandAimed = true;
+                this.hitResult = OffhandAimHelper.pick(this.player);
+            }
         }
 
         return original.call(instance);
     }
 
+    @Unique
+    private HitResult vivecraft$mainHitResult;
+
+    @Unique
+    private boolean vivecraft$offhandAimed;
+
     @Inject(method = "startUseItem", at = @At("RETURN"))
     private void vivecraft$sendActiveHandStartReset(CallbackInfo ci) {
         if (VRState.VR_RUNNING) {
             ClientNetworking.resetActiveBodyPart();
+        }
+        if (this.vivecraft$offhandAimed) {
+            // restore the main hand hit result after the offhand used its own
+            this.hitResult = this.vivecraft$mainHitResult;
+            this.vivecraft$mainHitResult = null;
+            this.vivecraft$offhandAimed = false;
         }
     }
 
