@@ -91,6 +91,7 @@ public class VRRenderState {
     public final ScreenRenderState radialState = new ScreenRenderState();
 
     public final CrosshairRenderState crosshairState = new CrosshairRenderState();
+    public final CrosshairRenderState offhandCrosshairState = new CrosshairRenderState();
     public final CameraWidgetRenderState thirdCamWidgetState = new CameraWidgetRenderState();
     public final CameraWidgetRenderState screenCamWidgetState = new CameraWidgetRenderState();
 
@@ -283,6 +284,7 @@ public class VRRenderState {
         }
 
         VREffectsHelper.extractCrosshairState(this.crosshairState, player);
+        VREffectsHelper.extractOffhandCrosshairState(this.offhandCrosshairState, player);
         VRWidgetHelper.extractVRThirdPersonCamWidget(this.thirdCamWidgetState, player);
         VRWidgetHelper.extractVRHandheldCameraWidget(this.screenCamWidgetState, player);
         DebugRenderHelper.extractDebug(partialTick);

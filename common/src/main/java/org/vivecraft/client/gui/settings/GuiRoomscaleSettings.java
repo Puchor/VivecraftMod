@@ -27,7 +27,8 @@ public class GuiRoomscaleSettings extends GuiVROptionsBase {
         new VROptionEntry(VRSettings.VrOptions.ALLOW_CRAWLING),
         new VROptionEntry(VRSettings.VrOptions.REALISTIC_DISMOUNT),
         new VROptionEntry(VRSettings.VrOptions.REALISTIC_BLOCK_INTERACT),
-        new VROptionEntry(VRSettings.VrOptions.REALISTIC_ENTITY_INTERACT)
+        new VROptionEntry(VRSettings.VrOptions.REALISTIC_ENTITY_INTERACT),
+        new VROptionEntry(VRSettings.VrOptions.OFFHAND_AIM)
     };
 
     public GuiRoomscaleSettings(Screen lastScreen) {

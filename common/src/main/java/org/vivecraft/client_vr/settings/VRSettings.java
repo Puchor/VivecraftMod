@@ -410,6 +410,8 @@ public class VRSettings {
     public boolean realisticBlockInteractEnabled = true;
     @SettingField(VrOptions.REALISTIC_ENTITY_INTERACT)
     public boolean realisticEntityInteractEnabled = true;
+    @SettingField(VrOptions.OFFHAND_AIM)
+    public boolean offhandAim = false;
     @SettingField(VrOptions.REALISTIC_OPENING)
     public boolean doorHitting = true;
     @SettingField(VrOptions.BACKPACK_SWITCH)
@@ -2305,6 +2307,7 @@ public class VRSettings {
         REALISTIC_DISMOUNT(OptionType.BOOLEAN), // Roomscale Dismounting
         REALISTIC_BLOCK_INTERACT(OptionType.BOOLEAN), // Roomscale Block Interaction
         REALISTIC_ENTITY_INTERACT(OptionType.BOOLEAN), // Roomscale Entity Interaction
+        OFFHAND_AIM(OptionType.BOOLEAN), // aim offhand item use with the offhand controller
         REALISTIC_OPENING(OptionType.BOOLEAN), // open doors by hitting them
         WALK_MULTIPLIER(1f, 10f, 0.1f, 1), // Walking Multiplier
         FREEMOVE_MODE { // Free Move Type

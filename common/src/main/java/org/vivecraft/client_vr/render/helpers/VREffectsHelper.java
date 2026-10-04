@@ -708,6 +708,7 @@ public class VREffectsHelper {
 
         Profiler.get().push("VR");
         renderCrosshairAtDepth(output, vrState.crosshairState, levelState.cameraRenderState, poseStack, 0);
+        renderCrosshairAtDepth(output, vrState.offhandCrosshairState, levelState.cameraRenderState, poseStack, 0);
 
         // switch to VR Occluded buffer, and copy main depth for occlusion
         VRRenderTypes.VR_OUTPUT_TARGET = VRRenderTypes.OCCLUDED_TARGET;
@@ -776,6 +777,8 @@ public class VREffectsHelper {
         if (!secondPassOnly) {
             order = renderCrosshairAtDepth(output, vrState.crosshairState, levelState.cameraRenderState, poseStack,
                 order);
+            order = renderCrosshairAtDepth(output, vrState.offhandCrosshairState, levelState.cameraRenderState,
+                poseStack, order);
 
             // item renderers can't be ordered, should be fine though
             VRWidgetHelper.renderVRThirdPersonCamWidget(output, levelState.cameraRenderState,
@@ -1192,6 +1195,65 @@ public class VREffectsHelper {
         } else {
             return !(DATA_HOLDER.vrPlayer.worldScale > 15.0F);
         }
+    }
+
+    /**
+     * extracts the crosshair for the offhand controller, shown when offhand items are aimed with the offhand
+     */
+    public static void extractOffhandCrosshairState(CrosshairRenderState crosshairRenderState,
+        @Nullable LocalPlayer player)
+    {
+        crosshairRenderState.shouldRender = player != null &&
+            org.vivecraft.client_vr.gameplay.OffhandAimHelper.showCrosshair(player) && shouldRenderCrosshair() &&
+            !RadialHandler.isUsingController(ControllerType.LEFT);
+        if (!crosshairRenderState.shouldRender) return;
+
+        Profiler.get().push("extract offhand crosshair");
+
+        var controller = org.vivecraft.client_vr.gameplay.OffhandAimHelper.getOffhandPose();
+        HitResult hit = org.vivecraft.client_vr.gameplay.OffhandAimHelper.pick(player);
+        Vec3 crossDistance = hit.getLocation().subtract(controller.getPosition());
+
+        // scooch closer a bit for light calc.
+        crosshairRenderState.pos = hit.getLocation().add(crossDistance.normalize().scale(-0.01D));
+
+        Matrix4f rotation = crosshairRenderState.rotation.identity();
+        if (hit.getType() == HitResult.Type.BLOCK) {
+            // if there is a block hit, make the crosshair parallel to the block
+            switch (((BlockHitResult) hit).getDirection()) {
+                case DOWN -> {
+                    rotation.rotate(Axis.YP.rotationDegrees(-controller.getYaw()));
+                    rotation.rotate(Axis.XP.rotationDegrees(-90.0F));
+                }
+                case UP -> {
+                    rotation.rotate(Axis.YP.rotationDegrees(-controller.getYaw()));
+                    rotation.rotate(Axis.XP.rotationDegrees(90.0F));
+                }
+                case WEST -> rotation.rotate(Axis.YP.rotationDegrees(90.0F));
+                case EAST -> rotation.rotate(Axis.YP.rotationDegrees(-90.0F));
+                case SOUTH -> rotation.rotate(Axis.YP.rotationDegrees(180.0F));
+            }
+        } else {
+            // if there is no block hit, make it face the controller
+            rotation.rotate(Axis.YP.rotationDegrees(-controller.getYaw()));
+            rotation.rotate(Axis.XP.rotationDegrees(-controller.getPitch()));
+        }
+
+        // a bit smaller than the main hand crosshair, to tell them apart
+        float scale = (float) (0.09F * DATA_HOLDER.vrSettings.crosshairScale *
+            Math.sqrt(DATA_HOLDER.vrPlayer.vrdata_world_render.worldScale)
+        );
+        if (DATA_HOLDER.vrSettings.crosshairScalesWithDistance) {
+            scale *= 0.3F + 0.2F * (float) crossDistance.length();
+        }
+        crosshairRenderState.scale = scale;
+
+        crosshairRenderState.light = LightCoordsUtil.getLightCoords(player.level(),
+            BlockPos.containing(crosshairRenderState.pos));
+        crosshairRenderState.brightness = hit.getType() == HitResult.Type.MISS ? 0.5F : 1.0F;
+        crosshairRenderState.occlude = DATA_HOLDER.vrSettings.useCrosshairOcclusion;
+
+        Profiler.get().pop();
     }
 
     public static void extractCrosshairState(CrosshairRenderState crosshairRenderState, @Nullable LocalPlayer player) {
