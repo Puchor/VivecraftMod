@@ -32,11 +32,11 @@ public class RayTraceHandlerMixin {
         }
 
         LocalPlayer player = (LocalPlayer) entity;
-        VRData data = dataHolder.vrPlayer.vrdata_world_pre;
-        // reacharound uses the main hand if it holds a block, otherwise the offhand
+        // the main hand already works, only redirect when reacharound places from the offhand
         boolean offhand = !(player.getMainHandItem().getItem() instanceof BlockItem) &&
             player.getOffhandItem().getItem() instanceof BlockItem && OffhandAimHelper.isActive(player);
-        VRData.VRDevicePose pose = offhand ? data.getController(1) : data.getAim();
+        if (!offhand) return;
+        VRData.VRDevicePose pose = dataHolder.vrPlayer.vrdata_world_pre.getController(1);
         cir.setReturnValue(Pair.of(pose.getPosition(), new Vec3(pose.getDirection()).normalize()));
     }
 }
