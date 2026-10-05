@@ -5,6 +5,7 @@ import com.llamalad7.mixinextras.sugar.Local;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
 import net.minecraft.client.renderer.extract.LevelExtractor;
 import net.minecraft.client.renderer.state.level.BlockOutlineRenderState;
@@ -13,16 +14,21 @@ import net.minecraft.client.resources.model.geometry.BakedQuad;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import org.jspecify.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.vivecraft.client.extensions.LevelRenderStateExtension;
 import org.vivecraft.client_vr.ClientDataHolderVR;
+import org.vivecraft.client_vr.gameplay.OffhandAimHelper;
 import org.vivecraft.client_vr.gameplay.interact_modules.BlockInteractionModule;
+import org.vivecraft.client_vr.settings.VRSettings;
 import org.vivecraft.client_xr.render_pass.RenderPassType;
 
 @Mixin(LevelExtractor.class)
@@ -63,9 +69,41 @@ public class LevelExtractorVRMixin {
                     new BlockOutlineRenderState(blockPos,
                         blockStateModel.hasMaterialFlag(BakedQuad.FLAG_TRANSLUCENT), false,
                         blockState.getShape(this.level, blockPos, CollisionContext.of(camera.entity()))));
+            } else if (c == 1 && vivecraft$offhandAimOutline(camera, levelRenderState)) {
+                // offhand aim outline was set
             } else {
                 ((LevelRenderStateExtension) levelRenderState).vivecraft$setInteractOutlineState(c, null);
             }
         }
+    }
+
+    /**
+     * sets the offhand outline to the block the offhand aims at, when offhand aim is active
+     *
+     * @return if an outline was set
+     */
+    @Unique
+    private boolean vivecraft$offhandAimOutline(Camera camera, LevelRenderState levelRenderState) {
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (ClientDataHolderVR.getInstance().vrSettings.renderBlockOutlineMode ==
+            VRSettings.RenderPointerElement.NEVER || !OffhandAimHelper.showCrosshair(player))
+        {
+            return false;
+        }
+        if (!(OffhandAimHelper.pick(player) instanceof BlockHitResult blockHit) ||
+            blockHit.getType() != HitResult.Type.BLOCK)
+        {
+            return false;
+        }
+        BlockPos blockPos = blockHit.getBlockPos();
+        BlockState blockState = this.level.getBlockState(blockPos);
+        if (blockState.isAir()) return false;
+        BlockStateModel blockStateModel = Minecraft.getInstance().getModelManager().getBlockStateModelSet()
+            .get(blockState);
+        ((LevelRenderStateExtension) levelRenderState).vivecraft$setInteractOutlineState(1,
+            new BlockOutlineRenderState(blockPos,
+                blockStateModel.hasMaterialFlag(BakedQuad.FLAG_TRANSLUCENT), false,
+                blockState.getShape(this.level, blockPos, CollisionContext.of(camera.entity()))));
+        return true;
     }
 }
