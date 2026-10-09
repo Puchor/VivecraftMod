@@ -1239,8 +1239,8 @@ public class VREffectsHelper {
             rotation.rotate(Axis.XP.rotationDegrees(-controller.getPitch()));
         }
 
-        // a bit smaller than the main hand crosshair, to tell them apart
-        float scale = (float) (0.09F * DATA_HOLDER.vrSettings.crosshairScale *
+        // same size as the main hand crosshair
+        float scale = (float) (0.125F * DATA_HOLDER.vrSettings.crosshairScale *
             Math.sqrt(DATA_HOLDER.vrPlayer.vrdata_world_render.worldScale)
         );
         if (DATA_HOLDER.vrSettings.crosshairScalesWithDistance) {
